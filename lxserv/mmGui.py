@@ -23,10 +23,10 @@ class Gui(lxifc.CustomView):
 	def customview_Init(self, pane):
 		if pane is None:
 			return False
-		custPane = lx.object.CustomPane(pane)
-		if not custPane.test():
+		custom_pane = lx.object.CustomPane(pane)
+		if not custom_pane.test():
 			return False
-		parent = custPane.GetParent()
+		parent = custom_pane.GetParent()
 		widget = lx.getQWidget(parent)
 		if widget is not None:
 
@@ -37,7 +37,7 @@ class Gui(lxifc.CustomView):
 
 			self.form.renderButton.clicked.connect(self.render)
 			self.form.randButton.clicked.connect(self.randomize)
-			self.form.mmValButton.clicked.connect(self.setVal)
+			self.form.mmValButton.clicked.connect(self.set_val)
 
 			return True
 		return False
@@ -45,13 +45,13 @@ class Gui(lxifc.CustomView):
 	def render(self):
 		anim = int(bool(self.form.animCheckBox.checkState()))
 		ptag = int(bool(self.form.matRadio.isChecked()))
-		lx.eval('mm.render %s %s' % (anim, ptag))
+		lx.eval('mm.render {} {}'.format((anim, ptag)))
 
 	def randomize(self):
 		lx.eval('mm.rand')
 
-	def setVal(self):
-		lx.eval('mm.setval %s' % int(str(self.form.mmValBox.value())))
+	def set_val(self):
+		lx.eval('mm.setVal {}'.format(int(str(self.form.mmValBox.value()))))
 
 
 class GuiCommand(lxu.command.BasicCommand):

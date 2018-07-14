@@ -5,18 +5,18 @@ import modo
 
 
 def main():
-		modo.util.makeQuickCommand('mm.render', render, [('anim', False), ('ptagType', True)])
-		modo.util.makeQuickCommand('mm.rand', randomize)
-		modo.util.makeQuickCommand('mm.setval', setVal, [('value', '0')])
+	modo.util.makeQuickCommand('mm.render', render, [('anim', False), ('ptag_type', True)])
+	modo.util.makeQuickCommand('mm.rand', randomize)
+	modo.util.makeQuickCommand('mm.setVal', set_val, [('value', '0')])
 
 
-def render(anim, ptagType):
+def render(anim, ptag_type):
 	scene = modo.Scene()
-	addedItems = []
+	added_items = []
 	tags = []
 
 	#Create lists of unique material tags
-	if ptagType:
+	if ptag_type:
 		for item in scene.items():
 			if item.type == 'mask':
 				ptag = item.channel('ptag').get()
@@ -35,7 +35,7 @@ def render(anim, ptagType):
 
 		#Create groups per tag
 		for tag in tags:
-			group = scene.addGroup('mmTag%s' % tag)
+			group = scene.addGroup('mmTag{}'.format(tag))
 			for mesh in scene.meshes:
 				try:
 					if mesh.channel('mmVal').get() == tag:
@@ -45,84 +45,87 @@ def render(anim, ptagType):
 					pass
 
 	#Create new render pass group
-	passGroup = scene.addRenderPassGroup('mmPasses')
+	pass_group = scene.addRenderPassGroup('mmPasses')
 
 	#Find the number of passes to be created
-	if len(tags) % 3 == 0:
-		passCount = len(tags) / 3
-	else:
-		passCount = (len(tags) / 3) + 1
+    tags_count = len(tags)
+    pass_count = tags_count / 3 if tags_count % 3 == 0 else tags_count / 3 + 1
 
 	#Add passes to our render pass group
-	renderPasses = []
-	for renderPass in range(passCount):
-		renderPasses.append(passGroup.addPass('mmPass%s' % renderPass))
-		addedItems.append(renderPasses[-1])
+	render_passes = []
+	for render_pass in range(pass_count):
+		render_passes.append(pass_group.addPass('mmPass{}'.format(render_pass)))
+		added_items.append(render_passes[-1])
 
 	#Create material group containing a plain shader at the top of the shader tree
-	containerMask = scene.addItem('mask', 'mmContainer')
-	containerMask.select()
+	container_mask = scene.addItem('mask', 'mmContainer')
+	container_mask.select()
 	lx.eval('texture.parent polyRender006 -1')
-	containerMask.deselect()
-	containerShader = scene.addItem('defaultShader', 'mmShader')
-	containerShader.setParent(scene.item('mmContainer'))
-	addedItems.append(containerMask)
-	addedItems.append(containerShader)
+	container_mask.deselect()
+	container_shader = scene.addItem('defaultShader', 'mmShader')
+	container_shader.setParent(scene.item('mmContainer'))
+	added_items.append(container_mask)
+	added_items.append(container_shader)
 
 	#Add masks and materials per material tag, add to material group
 	masks = []
 	for i, tag in enumerate(tags):
-		mask = scene.addItem('mask', 'mmMask%s' % tag)
-		mat = scene.addMaterial('advancedMaterial', 'mmMat%s' % tag)
+		mask = scene.addItem('mask', 'mmMask{}'.format(tag))
+		mat = scene.addMaterial('advancedMaterial', 'mmMat{}'.format(tag))
 		mat.setParent(mask)
 		mask.setParent(scene.item('mmContainer'))
-		if ptagType:
+		if ptag_type:
 			mask.channel('ptag').set(tag)
 		else:
 			mask.select()
-			lx.eval('mask.setMesh mmTag%s' % tag)
+			lx.eval('mask.setMesh mmTag{}'.format(tag))
 			mask.deselect()
 
 		#Every third material will be red, green, or blue
-		if (i + 1) % 3 == 2:
+        channel_selection = (i + 1) % 3
+		if channel_selection == 2:
 			rgb = [1, 0, 0]
-		elif (i + 1) % 3 == 1:
+		elif channel_selection == 1:
 			rgb = [0, 1, 0]
 		else:
 			rgb = [0, 0, 1]
 
 		#Set material channels
-		matChannels = {'diffAmt': 0,
-						'specAmt': 0,
-						'specFres': 0,
-						'radiance': 1,
-						'lumiCol.R': rgb[0],
-						'lumiCol.G': rgb[1],
-						'lumiCol.B': rgb[2]}
-		for channel in matChannels.keys():
-			mat.channel(channel).set(matChannels[channel])
+		material_channels = {
+            'diffAmt': 0,
+			'specAmt': 0,
+			'specFres': 0,
+			'radiance': 1,
+			'lumiCol.R': rgb[0],
+			'lumiCol.G': rgb[1],
+			'lumiCol.B': rgb[2]
+        }
+		for channel in material_channels.keys():
+			mat.channel(channel).set(material_channels[channel])
 
 		masks.append(mask)
-		addedItems.append(mask)
-		addedItems.append(mat)
+		added_items.append(mask)
+		added_items.append(mat)
 
 	#Add a black material to the bottom of the material group
 	mat = scene.addMaterial('advancedMaterial', 'mmBlack')
 	mat.setParent(scene.item('mmContainer'))
-	matChannels = {'diffAmt': 0,
-					'specAmt': 0,
-					'specFres': 0,
-					'radiance': 0}
-	for channel in matChannels.keys():
-		mat.channel(channel).set(matChannels[channel])
-	addedItems.append(mat)
+	material_channels = {
+        'diffAmt': 0,
+		'specAmt': 0,
+		'specFres': 0,
+		'radiance': 0
+    }
+	for channel in material_channels.keys():
+		mat.channel(channel).set(material_channels[channel])
+	added_items.append(mat)
 
 	#Turn masks on and off in render passes
-	for i, renderPass in enumerate(renderPasses):
-		masksOn = range(i * 3, (i + 1) * 3)
+	for i, render_pass in enumerate(render_passes):
+		masks_on = range(i * 3, (i + 1) * 3)
 		for n, mask in enumerate(masks):
-			if n not in masksOn:
-				renderPass.setValue(mask.channel('enable'), False)
+			if n not in masks_on:
+				render_pass.setValue(mask.channel('enable'), False)
 
 	#Set up black background
 	env = scene.addItem('envMaterial', 'mmTmpEnv')
@@ -131,67 +134,69 @@ def render(anim, ptagType):
 	env.deselect()
 	env.channel('type').set('constant')
 	env.channel('zenColor').set((0, 0, 0))
-	addedItems.append(env)
+	added_items.append(env)
 
 	render = modo.Item('polyRender006')
-	userGi = render.channel('globEnable').get()
+	user_gi = render.channel('globEnable').get()
 	render.channel('globEnable').set(False)
-	addedItems.append(passGroup)  #Added this last to fix crashes when deleting items
+	added_items.append(pass_group)  #Added this last to fix crashes when deleting items
 
 	if anim:
-		params =	(render.channel('first').get(),
-					render.channel('last').get(),
-					render.channel('step').get(),
-					addedItems[-1].id)
-		try:  #User may cancel this opperation
-			lx.eval('render.animationDialog %s %s %s sequence %s' % params)
+		parameters = (
+            render.channel('first').get(),
+			render.channel('last').get(),
+			render.channel('step').get(),
+			added_items[-1].id
+        )
+        #User may cancel this opperation
+		try:  
+			lx.eval('render.animationDialog {} {} {} sequence {}'.format(*parameters))
 		except:
 			pass
 	else:
-		lx.eval('render.passes %s' % addedItems[-1].id)
+		lx.eval('render.passes {}'.format(added_items[-1].id))
 
-	scene.removeItems(addedItems)
-	render.channel('globEnable').set(userGi)
+	scene.removeItems(added_items)
+	render.channel('globEnable').set(user_gi)
 
 
 def randomize():
 	scene = modo.Scene()
-	channelNames = []
-	userSelection = scene.selected
+	channel_names = []
+	user_selection = scene.selected
 	for item in scene.items():
 		item.deselect()
 	for i, item in enumerate(scene.meshes):
 		for channel in item.channels():
-			channelNames.append(channel.name)
-		if 'mmVal' not in channelNames:
+			channel_names.append(channel.name)
+		if 'mmVal' not in channel_names:
 			item.select()
 			lx.eval('channel.create mmVal integer username:mmVal')
 			item.deselect()
 			item.channel('mmVal').set(i)
-		channelNames = []
-	for item in userSelection:
+		channel_names = []
+	for item in user_selection:
 		item.select()
 
-def setVal(value):
+def set_val(value):
 	scene = modo.Scene()
-	channelNames = []
-	userSelection = scene.selected
+	channel_names = []
+	user_selection = scene.selected
 	for item in scene.items():
 		item.deselect()
-	for item in userSelection:
+	for item in user_selection:
 		for channel in item.channels():
-			channelNames.append(channel.name)
-		if 'mmVal' in channelNames:
+			channel_names.append(channel.name)
+		if 'mmVal' in channel_names:
 			item.channel('mmVal').set(value)
 		else:
 			item.select()
 			lx.eval('channel.create mmVal integer username:mmVal')
 			item.deselect()
 			item.channel('mmVal').set(value)
-		channelNames = []
-	for item in userSelection:
+		channel_names = []
+	for item in user_selection:
 		item.select()
-
 
 
 main()
